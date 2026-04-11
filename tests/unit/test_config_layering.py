@@ -100,3 +100,47 @@ class TestDefaults:
     def test_kl_default_baseline_mode_rolling(self):
         cfg = RLWatchConfig()
         assert cfg.kl_explosion.baseline_mode == "rolling"
+
+    def test_discord_config_defaults(self):
+        cfg = RLWatchConfig()
+        assert cfg.alerts.discord.enabled is False
+        assert cfg.alerts.discord.webhook_url == ""
+        assert cfg.alerts.discord.username == "rlwatch"
+        assert cfg.alerts.discord.mention_role_ids == []
+
+    def test_webhook_config_defaults(self):
+        cfg = RLWatchConfig()
+        assert cfg.alerts.webhook.enabled is False
+        assert cfg.alerts.webhook.url == ""
+        assert cfg.alerts.webhook.method == "POST"
+        assert cfg.alerts.webhook.headers == {}
+        assert cfg.alerts.webhook.template_json == ""
+        assert cfg.alerts.webhook.timeout_seconds == 10
+
+
+class TestNewChannelEnvOverrides:
+    def test_discord_webhook_url_env_var_auto_enables(self, monkeypatch):
+        monkeypatch.setenv(
+            "RLWATCH_DISCORD_WEBHOOK_URL",
+            "https://discord.com/api/webhooks/x/y",
+        )
+        from rlwatch.config import load_config
+        cfg = load_config(config_path="/nonexistent/path.yaml")
+        assert cfg.alerts.discord.webhook_url == "https://discord.com/api/webhooks/x/y"
+        assert cfg.alerts.discord.enabled is True
+
+    def test_webhook_url_env_var_auto_enables(self, monkeypatch):
+        monkeypatch.setenv("RLWATCH_WEBHOOK_URL", "https://example.invalid/hook")
+        from rlwatch.config import load_config
+        cfg = load_config(config_path="/nonexistent/path.yaml")
+        assert cfg.alerts.webhook.url == "https://example.invalid/hook"
+        assert cfg.alerts.webhook.enabled is True
+
+    def test_webhook_template_env_var(self, monkeypatch):
+        monkeypatch.setenv("RLWATCH_WEBHOOK_URL", "https://example.invalid/hook")
+        monkeypatch.setenv(
+            "RLWATCH_WEBHOOK_TEMPLATE", '{"x": "${detector}"}'
+        )
+        from rlwatch.config import load_config
+        cfg = load_config(config_path="/nonexistent/path.yaml")
+        assert cfg.alerts.webhook.template_json == '{"x": "${detector}"}'

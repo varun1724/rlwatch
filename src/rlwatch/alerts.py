@@ -1,16 +1,29 @@
-"""Alert delivery via Slack webhook and email."""
+"""Alert delivery channels — console, Slack, email, Discord, generic webhook.
+
+This module is the only place in the codebase that's allowed to make network
+calls (CLAUDE.md cardinal rule #4). The CI forbidden-pattern grep enforces
+this — all ``urllib.request`` / ``requests`` / ``httpx`` references must live
+here.
+
+Every sender follows the same shape:
+- Constructed with config, holds no global state.
+- ``send(alert, run_id)`` is called from a daemon thread by ``AlertManager``.
+- Catches and logs every exception. **Never raises into the training loop.**
+"""
 
 from __future__ import annotations
 
-import asyncio
+import json
 import logging
 import smtplib
+import string
 import threading
+from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
 
-from rlwatch.config import AlertConfig
+from rlwatch.config import AlertConfig, DiscordConfig, WebhookConfig
 from rlwatch.detectors import Alert
 
 logger = logging.getLogger("rlwatch.alerts")
@@ -31,6 +44,8 @@ class AlertManager:
         self._last_warning_step: dict[str, int] = {}
         self._slack_client: Optional[_SlackSender] = None
         self._email_client: Optional[_EmailSender] = None
+        self._discord_client: Optional[_DiscordSender] = None
+        self._webhook_client: Optional[_WebhookSender] = None
 
         if config.slack.enabled and config.slack.webhook_url:
             self._slack_client = _SlackSender(config.slack.webhook_url)
@@ -44,6 +59,12 @@ class AlertManager:
                 from_addr=config.email.from_addr,
                 to_addrs=config.email.to_addrs,
             )
+
+        if config.discord.enabled and config.discord.webhook_url:
+            self._discord_client = _DiscordSender(config.discord)
+
+        if config.webhook.enabled and config.webhook.url:
+            self._webhook_client = _WebhookSender(config.webhook)
 
     def should_send(self, alert: Alert) -> bool:
         """Check if an alert should be sent based on cooldown and rate limits.
@@ -91,6 +112,20 @@ class AlertManager:
         if self._email_client:
             threading.Thread(
                 target=self._email_client.send,
+                args=(alert, self.run_id),
+                daemon=True,
+            ).start()
+
+        if self._discord_client:
+            threading.Thread(
+                target=self._discord_client.send,
+                args=(alert, self.run_id),
+                daemon=True,
+            ).start()
+
+        if self._webhook_client:
+            threading.Thread(
+                target=self._webhook_client.send,
                 args=(alert, self.run_id),
                 daemon=True,
             ).start()
@@ -263,3 +298,186 @@ class _EmailSender:
             logger.info("Email alert sent to %s", self.to_addrs)
         except Exception as e:
             logger.error("Failed to send email alert: %s", e)
+
+
+# ---------------------------------------------------------------------------
+# Discord webhook sender
+# ---------------------------------------------------------------------------
+class _DiscordSender:
+    """Sends alerts to a Discord channel via the webhook API.
+
+    Discord webhooks accept JSON at ``https://discord.com/api/webhooks/{id}/{token}``
+    with optional ``content`` (plain text), ``embeds`` (rich blocks), ``username``,
+    and ``avatar_url`` fields. We use one embed per alert with severity-coded
+    color and an emoji-prefixed title.
+    """
+
+    def __init__(self, config: DiscordConfig):
+        self.config = config
+
+    def send(self, alert: Alert, run_id: str):
+        try:
+            from urllib.error import HTTPError, URLError
+            from urllib.request import Request, urlopen
+
+            emoji = "🚨" if alert.severity == "critical" else "⚠️"
+            color = 0xFF0000 if alert.severity == "critical" else 0xFFA500
+
+            # Mention configured roles only on critical alerts so warnings
+            # don't ping the on-call rotation in the middle of the night.
+            mention_content: Optional[str] = None
+            if alert.severity == "critical" and self.config.mention_role_ids:
+                mention_content = " ".join(
+                    f"<@&{rid}>" for rid in self.config.mention_role_ids
+                )
+
+            fields = [
+                {"name": "Run", "value": f"`{run_id}`", "inline": True},
+                {"name": "Step", "value": str(alert.step), "inline": True},
+                {
+                    "name": "Recommended action",
+                    "value": alert.recommendation,
+                    "inline": False,
+                },
+            ]
+            # Discord caps embed fields at 25; cap our metric overflow at 10
+            # to leave headroom and stay readable.
+            for k, v in list(alert.metric_values.items())[:10]:
+                if v is None:
+                    continue
+                formatted = f"{v:.4f}" if isinstance(v, float) else str(v)
+                fields.append(
+                    {"name": f"`{k}`", "value": formatted, "inline": True}
+                )
+
+            payload: dict = {
+                "username": self.config.username,
+                "embeds": [
+                    {
+                        "title": f"{emoji} rlwatch {alert.severity.upper()}: {alert.detector}",
+                        "description": alert.message,
+                        "color": color,
+                        "fields": fields,
+                    }
+                ],
+            }
+            if self.config.avatar_url:
+                payload["avatar_url"] = self.config.avatar_url
+            if mention_content:
+                payload["content"] = mention_content
+
+            data = json.dumps(payload).encode("utf-8")
+            req = Request(
+                self.config.webhook_url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urlopen(req, timeout=10) as resp:
+                # Discord returns 204 No Content on success.
+                if resp.status >= 300:
+                    logger.error("Discord webhook returned %d", resp.status)
+        except (HTTPError, URLError) as e:
+            logger.error("Failed to send Discord alert: %s", e)
+        except Exception as e:
+            logger.error("Unexpected Discord send error: %s", e)
+
+
+# ---------------------------------------------------------------------------
+# Generic HTTP webhook sender
+# ---------------------------------------------------------------------------
+_DEFAULT_WEBHOOK_TEMPLATE = """{
+  "detector": "${detector}",
+  "severity": "${severity}",
+  "step": ${step},
+  "run_id": "${run_id}",
+  "message": "${message}",
+  "recommendation": "${recommendation}",
+  "metrics": ${metrics_json},
+  "timestamp": "${timestamp}"
+}"""
+
+
+def _json_escape(s: str) -> str:
+    """Escape a string so it can be safely substituted into a JSON string slot.
+
+    Uses ``json.dumps`` and strips the surrounding quotes — that's the
+    canonical "give me a JSON-safe string body" trick. Handles quotes,
+    backslashes, newlines, control chars, and non-ASCII unicode.
+    """
+    if s is None:
+        return ""
+    return json.dumps(s)[1:-1]
+
+
+class _WebhookSender:
+    """Generic HTTP webhook sender with ``string.Template`` substitution.
+
+    POSTs (or PUTs) a JSON body to a user-supplied URL. The body is built
+    from a ``string.Template`` so users can customize the payload shape for
+    whatever downstream system they're feeding (incident tracker, internal
+    log aggregator, custom Slack-of-record, etc.).
+
+    Substitutable fields:
+        ${detector}        — alert.detector
+        ${severity}        — "critical" | "warning"
+        ${severity_upper}  — "CRITICAL" | "WARNING"
+        ${step}            — int (unquoted in default template — numeric slot)
+        ${message}         — alert.message (JSON-escaped)
+        ${recommendation}  — alert.recommendation (JSON-escaped)
+        ${run_id}          — manager run_id
+        ${timestamp}       — ISO8601 UTC at send time
+        ${metrics_json}    — json.dumps(alert.metric_values), unquoted (object slot)
+
+    The substituted body is validated with ``json.loads`` before sending.
+    Invalid JSON is logged and dropped — we never POST something that won't
+    parse on the other end.
+    """
+
+    def __init__(self, config: WebhookConfig):
+        self.config = config
+
+    def send(self, alert: Alert, run_id: str):
+        try:
+            from urllib.error import HTTPError, URLError
+            from urllib.request import Request, urlopen
+
+            tmpl_str = self.config.template_json or _DEFAULT_WEBHOOK_TEMPLATE
+            tmpl = string.Template(tmpl_str)
+            body = tmpl.safe_substitute(
+                detector=alert.detector,
+                severity=alert.severity,
+                severity_upper=alert.severity.upper(),
+                step=alert.step,
+                message=_json_escape(alert.message),
+                recommendation=_json_escape(alert.recommendation),
+                run_id=_json_escape(run_id),
+                metrics_json=json.dumps(alert.metric_values),
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+
+            # Validate the substituted body is still parseable JSON. A
+            # malformed custom template should fail loudly here, not on the
+            # receiving server.
+            try:
+                json.loads(body)
+            except json.JSONDecodeError as e:
+                logger.error(
+                    "Webhook template produced invalid JSON after substitution: %s",
+                    e,
+                )
+                return
+
+            req = Request(
+                self.config.url,
+                data=body.encode("utf-8"),
+                headers={"Content-Type": "application/json", **self.config.headers},
+                method=self.config.method,
+            )
+            with urlopen(req, timeout=self.config.timeout_seconds) as resp:
+                if resp.status >= 300:
+                    logger.error("Webhook returned %d", resp.status)
+        except (HTTPError, URLError) as e:
+            logger.error("Failed to send webhook alert: %s", e)
+        except Exception as e:
+            logger.error("Unexpected webhook send error: %s", e)

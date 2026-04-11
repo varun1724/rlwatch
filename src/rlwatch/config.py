@@ -105,10 +105,48 @@ class EmailConfig:
 
 
 @dataclass
+class DiscordConfig:
+    """Discord webhook alert configuration.
+
+    Discord webhooks are HTTP POST endpoints that accept a JSON payload with
+    embeds (rich blocks similar to Slack blocks). We mirror the Slack severity
+    pattern: red embed + rotating-light emoji for critical, orange + warning
+    for warning. Stdlib HTTP only — no extra dependencies.
+    """
+    enabled: bool = False
+    webhook_url: str = ""
+    username: str = "rlwatch"
+    avatar_url: str = ""  # optional Discord avatar override
+    # Role IDs to @-mention on critical alerts. Use Discord developer mode to
+    # copy a role ID. Empty list = no mentions.
+    mention_role_ids: list[str] = field(default_factory=list)
+
+
+@dataclass
+class WebhookConfig:
+    """Generic HTTP webhook alert configuration.
+
+    Universal escape hatch for any system rlwatch doesn't have a dedicated
+    sender for. Posts a JSON body to ``url`` (POST or PUT, configurable).
+    The body is built from a ``string.Template`` with ``${field}``
+    substitutions; an empty ``template_json`` uses a sensible default.
+    Substitutable fields are documented in ``docs/alerts/webhook.md``.
+    """
+    enabled: bool = False
+    url: str = ""
+    method: str = "POST"  # POST or PUT
+    headers: dict[str, str] = field(default_factory=dict)
+    template_json: str = ""  # empty → use _DEFAULT_WEBHOOK_TEMPLATE
+    timeout_seconds: int = 10
+
+
+@dataclass
 class AlertConfig:
     """Alert delivery configuration."""
     slack: SlackConfig = field(default_factory=SlackConfig)
     email: EmailConfig = field(default_factory=EmailConfig)
+    discord: DiscordConfig = field(default_factory=DiscordConfig)
+    webhook: WebhookConfig = field(default_factory=WebhookConfig)
     cooldown_steps: int = 100
     max_alerts_per_run: int = 50
 
@@ -200,6 +238,12 @@ def _dict_to_config(data: dict) -> RLWatchConfig:
         if "email" in alerts:
             for k, v in alerts["email"].items():
                 setattr(cfg.alerts.email, k, v)
+        if "discord" in alerts:
+            for k, v in alerts["discord"].items():
+                setattr(cfg.alerts.discord, k, v)
+        if "webhook" in alerts:
+            for k, v in alerts["webhook"].items():
+                setattr(cfg.alerts.webhook, k, v)
         if "cooldown_steps" in alerts:
             cfg.alerts.cooldown_steps = alerts["cooldown_steps"]
         if "max_alerts_per_run" in alerts:
@@ -259,6 +303,9 @@ def load_config(
         "RLWATCH_RUN_ID": ("run_id",),
         "RLWATCH_LOG_DIR": ("storage", "log_dir"),
         "RLWATCH_FRAMEWORK": ("framework",),
+        "RLWATCH_DISCORD_WEBHOOK_URL": ("alerts", "discord", "webhook_url"),
+        "RLWATCH_WEBHOOK_URL": ("alerts", "webhook", "url"),
+        "RLWATCH_WEBHOOK_TEMPLATE": ("alerts", "webhook", "template_json"),
     }
 
     for env_key, path_parts in env_map.items():
@@ -285,6 +332,16 @@ def load_config(
     to_addrs = data.get("alerts", {}).get("email", {}).get("to_addrs", [])
     if to_addrs:
         data.setdefault("alerts", {}).setdefault("email", {})["enabled"] = True
+
+    # Enable Discord if webhook URL is configured
+    discord_url = data.get("alerts", {}).get("discord", {}).get("webhook_url", "")
+    if discord_url:
+        data.setdefault("alerts", {}).setdefault("discord", {})["enabled"] = True
+
+    # Enable generic webhook if URL is configured
+    webhook_url = data.get("alerts", {}).get("webhook", {}).get("url", "")
+    if webhook_url:
+        data.setdefault("alerts", {}).setdefault("webhook", {})["enabled"] = True
 
     cfg = _dict_to_config(data)
 
