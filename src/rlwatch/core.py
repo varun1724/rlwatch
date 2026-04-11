@@ -323,10 +323,11 @@ def _attach_trl(monitor: RLWatch, trainer=None):
     """Attach to HuggingFace TRL via TrainerCallback.
 
     If ``trainer`` is provided, register the callback directly. Otherwise stash
-    a callback class on the monitor and tell the user how to wire it up — we
-    do **not** scan ``gc.get_objects()`` for live ``Trainer`` instances; that
-    was slow, fragile, and depended on attach() being called *after* Trainer
-    construction in just the right place.
+    a callback class on the monitor and tell the user how to wire it up. We
+    deliberately do not walk the live object graph looking for a Trainer —
+    that approach was slow, fragile, and depended on attach() being called
+    *after* Trainer construction in just the right place. See BUILD_DECISIONS.md
+    for the full rationale.
     """
     try:
         callback_cls = _build_trl_callback(monitor)

@@ -43,11 +43,14 @@ jobs:
         run: python -c "import rlwatch; m = rlwatch.attach(framework='manual'); print(m.run_id); m.stop()"
       - name: Forbidden-pattern grep
         run: |
-          if grep -rn "gc.get_objects" src/rlwatch/; then
+          # Restrict to .py files (skip __pycache__/*.pyc) and require the
+          # actual function-call syntax so docstrings that *describe* the
+          # forbidden pattern don't trip the gate.
+          if grep -rnE --include="*.py" 'gc\.get_objects\s*\(' src/rlwatch/; then
             echo "::error::gc.get_objects() reintroduced into src/rlwatch/"
             exit 1
           fi
-          if grep -rn -E "(^|[^.])(requests\.|urllib\.request\.|httpx\.)" src/rlwatch/ | grep -v alerts.py; then
+          if grep -rnE --include="*.py" '(^|[^.])(requests\.|urllib\.request\.|httpx\.)' src/rlwatch/ | grep -v alerts.py; then
             echo "::error::network call introduced outside alerts.py"
             exit 1
           fi
