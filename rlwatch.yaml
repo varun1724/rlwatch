@@ -1,0 +1,69 @@
+# rlwatch configuration
+# See https://github.com/rlwatch/rlwatch for full documentation
+
+# Run identifier (auto-generated if empty)
+run_id: ""
+
+# Framework: auto, trl, verl, openrlhf, manual
+framework: auto
+
+# --- Detector Thresholds ---
+
+entropy_collapse:
+  enabled: true
+  threshold: 1.0            # Alert when entropy drops below this
+  consecutive_steps: 50     # Must be below threshold for this many steps
+  warmup_steps: 20          # Skip first N steps
+
+kl_explosion:
+  enabled: true
+  sigma_multiplier: 3.0     # Alert when KL exceeds this many sigma above rolling mean
+  clip_region: 0.2          # PPO clip region for reference
+  rolling_window: 100       # Window size for rolling statistics
+  warmup_steps: 20
+
+reward_hacking:
+  enabled: true
+  variance_multiplier: 3.0  # Alert when variance exceeds Nx baseline
+  dip_test_significance: 0.05  # Hartigan dip test p-value threshold
+  baseline_window: 100      # Steps to establish baseline variance
+  warmup_steps: 50
+
+advantage_variance:
+  enabled: true
+  std_multiplier: 3.0       # Alert when advantage std exceeds Nx rolling baseline
+  rolling_window: 100
+  warmup_steps: 20
+
+# --- Alert Delivery ---
+
+alerts:
+  cooldown_steps: 100       # Min steps between alerts for same detector
+  max_alerts_per_run: 50    # Stop alerting after this many total alerts
+
+  slack:
+    enabled: false
+    webhook_url: ""          # Or set RLWATCH_SLACK_WEBHOOK_URL env var
+    channel: ""
+    mention_users: []
+
+  email:
+    enabled: false
+    smtp_host: smtp.gmail.com
+    smtp_port: 587
+    smtp_user: ""            # Or set RLWATCH_SMTP_USER env var
+    smtp_password: ""        # Or set RLWATCH_SMTP_PASSWORD env var
+    from_addr: ""
+    to_addrs: []             # Or set RLWATCH_EMAIL_TO env var (comma-separated)
+
+# --- Storage ---
+
+storage:
+  log_dir: ./rlwatch_logs
+  db_name: metrics.db
+
+# --- Dashboard ---
+
+dashboard:
+  port: 8501
+  host: 0.0.0.0

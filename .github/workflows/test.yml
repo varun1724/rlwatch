@@ -1,0 +1,156 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Tier 1-3: unit, property, simulation. Runs on every (os, py) cell.
+  # Cheapest job, fails fast — gives PR authors quick feedback.
+  # ---------------------------------------------------------------------------
+  unit:
+    name: unit (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Cache hypothesis database
+        uses: actions/cache@v4
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ matrix.os }}-${{ matrix.python-version }}-${{ hashFiles('tests/property/**/*.py') }}
+          restore-keys: |
+            hypothesis-${{ matrix.os }}-${{ matrix.python-version }}-
+      - name: Install rlwatch and dev extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Cardinal rule #1 — two-line attach smoke test
+        run: python -c "import rlwatch; m = rlwatch.attach(framework='manual'); print(m.run_id); m.stop()"
+      - name: Forbidden-pattern grep
+        run: |
+          if grep -rn "gc.get_objects" src/rlwatch/; then
+            echo "::error::gc.get_objects() reintroduced into src/rlwatch/"
+            exit 1
+          fi
+          if grep -rn -E "(^|[^.])(requests\.|urllib\.request\.|httpx\.)" src/rlwatch/ | grep -v alerts.py; then
+            echo "::error::network call introduced outside alerts.py"
+            exit 1
+          fi
+      - name: Run unit + property + simulation tiers
+        run: pytest tests/unit tests/property tests/simulations -v
+      - name: End-to-end simulation smoke
+        run: python examples/simulate_grpo_run.py
+
+  # ---------------------------------------------------------------------------
+  # Tier 4: integration tests touching real SQLite, mocked Slack/SMTP, CLI.
+  # Linux-only, py3.11 only — these don't depend on the platform/version.
+  # ---------------------------------------------------------------------------
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install rlwatch and dev extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run Tier 4 integration tests
+        run: pytest tests/integration -v -m "not trl"
+
+  # ---------------------------------------------------------------------------
+  # Tier 4 (TRL): heavy job. Pulls transformers + trl. Gates v0.2.0 per plan.
+  # ---------------------------------------------------------------------------
+  trl:
+    name: trl integration
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install rlwatch + dev + trl extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,trl]"
+      - name: Run TRL integration tests
+        run: pytest tests/integration -v -m trl
+
+  # ---------------------------------------------------------------------------
+  # Tier 5: performance benchmarks. Linux-only — macOS runners are too noisy
+  # for sub-millisecond assertions. We apply a 2x slack to absorb variance.
+  # ---------------------------------------------------------------------------
+  perf:
+    name: perf benchmarks
+    runs-on: ubuntu-latest
+    needs: unit
+    env:
+      BENCHMARK_CI_SLACK: "2.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install rlwatch and dev extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run perf tier
+        run: pytest tests/perf --benchmark-only --benchmark-min-rounds=50 --benchmark-warmup=on
+
+  # ---------------------------------------------------------------------------
+  # Aggregated coverage gate. Runs everything except TRL and perf so the
+  # numbers are reproducible across runs (TRL is gated separately, perf
+  # exercises hot paths that don't change coverage meaningfully).
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: coverage gate
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install rlwatch and dev extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run with coverage gate
+        run: |
+          pytest \
+            tests/unit tests/property tests/simulations tests/integration \
+            -m "not trl and not perf" \
+            --cov=rlwatch \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=90
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
