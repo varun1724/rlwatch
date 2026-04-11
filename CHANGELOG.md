@@ -4,7 +4,9 @@ All notable changes to rlwatch are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — stage one of Phase 1, target tag v0.2.0
+## [Unreleased]
+
+## [0.2.0] — 2026-04-11 — stage one of Phase 1
 
 ### Added — test harness (ROADMAP 1.1)
 - **Five-tier test harness** matching the contract in `CLAUDE.md`:
