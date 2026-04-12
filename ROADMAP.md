@@ -50,15 +50,15 @@ Status: 🟢 Shipped in v0.2.0 (stage one) · Why: this is the single biggest ri
 - [x] `pytest-benchmark` for the hot path — `check_step` < 1 ms, `log_step` full pipeline < 3 ms, `log_metrics` > 1000 rows/sec
 
 ### 1.2 Detector robustness
-- [ ] Replace the simplified Hartigan dip test with the real implementation (or vendor `diptest` as an optional dep) — *deferred to v0.3, adds C extension dep*
+- [x] Replace the simplified Hartigan dip test with the real implementation — shipped in v0.4.0 as `[monitoring]` optional extra with fallback
 - [x] Add a **gradient norm spike** detector — shipped in v0.2.0 with `baseline_mode='frozen'` default
 - [x] Add a **loss NaN / Inf** detector — shipped in v0.2.0
-- [ ] Add a **reward mean drift** detector — *deferred to v0.3, design unclear without real-run data*
+- [x] Add a **reward mean drift** detector — shipped in v0.4.0 (monotone drift for N steps + magnitude threshold)
 - [ ] Let detectors declare dependencies on other detectors — *deferred indefinitely, architectural change*
 - [x] **`baseline_mode: "rolling" | "frozen"`** option on KL and advantage detectors — shipped in v0.2.0 with `rolling` default for backwards compat
 
 ### 1.3 Framework integrations
-- [ ] **veRL** deep integration — register a callback, not manual `log_step`
+- [x] **veRL** deep integration — shipped in v0.4.0 via custom tracking backend (`RLWatchVerLTracker`)
 - [ ] **OpenRLHF** deep integration — same
 - [ ] **Ray RLlib** support (stretch — different audience but big ecosystem)
 - [ ] Auto-detection test matrix: import the framework, call `attach()`, assert the right integration path fires

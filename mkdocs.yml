@@ -64,6 +64,7 @@ nav:
       - Advantage variance: detectors/advantage-variance.md
       - Loss NaN/Inf: detectors/loss-nan.md
       - Gradient norm spike: detectors/gradient-norm.md
+      - Reward mean drift: detectors/reward-drift.md
   - Configuration: configuration.md
   - CLI: cli.md
   - Alerts:

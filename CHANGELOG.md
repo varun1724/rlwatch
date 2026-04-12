@@ -6,6 +6,44 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-04-12 — stage three: depth focus
+
+### Added
+- **Real `diptest` integration.** Install `pip install "rlwatch[monitoring]"`
+  for the real Hartigan dip test via the `diptest` PyPI package. Falls back
+  to the simplified home-rolled implementation when not installed. Zero
+  behavior change for users who don't install the extra.
+- **`RewardMeanDriftDetector`** — fires warning when `reward_mean` moves
+  monotonically (up or down) for N consecutive steps with total magnitude
+  exceeding a configurable threshold. Catches slow reward hacking via
+  distribution shift where the variance doesn't spike. Warning-only (no
+  critical tier). 10 unit tests + simulation fixture.
+- **veRL deep integration** via custom tracking backend
+  (`src/rlwatch/integrations/verl_tracking.py`). `RLWatchVerLTracker`
+  duck-types veRL's tracking backend interface, mapping veRL metric names
+  (`actor/entropy`, `rewards/mean`, etc.) to rlwatch names. Auto-registers
+  with veRL's `Tracking` class when `attach()` detects veRL. 11 unit tests
+  at 100% coverage on the tracker module.
+- **`[monitoring]` optional extra** in `pyproject.toml` for the `diptest`
+  package.
+- New docs page: `docs/detectors/reward-drift.md`.
+
+### Fixed
+- **`MetricStore` access after close** no longer crashes. `get_alerts()`,
+  `get_metrics()`, `get_all_runs()`, and `get_latest_metrics()` return an
+  empty list when `_conn is None` (after `stop()` closes the connection).
+  4 new unit tests. The tutorial script was also fixed to read alerts
+  before calling `monitor.stop()`.
+- **TRL tutorial** now uses `loss_type="grpo"` with `learning_rate=1e-2`
+  and `num_iterations=3`. TRL 1.1.0's default `loss_type="dapo"` clipped
+  gradients to zero regardless of LR; classic GRPO reliably collapses
+  entropy from ~2.7 to ~0.15 within 150 steps on CPU.
+- **Tutorial CI workflow** `continue-on-error` removed now that the
+  tutorial is validated against TRL 1.1.0.
+- **`trl` CI job** now runs the specific `test_trl_integration.py` file
+  instead of using `-m trl` marker (which selected 0 tests after the
+  tutorial moved to a `tutorial` marker, causing exit code 5).
+
 ## [0.3.1] — 2026-04-11
 
 ### Fixed

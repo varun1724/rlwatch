@@ -45,6 +45,7 @@ These are the most common ways GRPO/PPO runs go sideways. rlwatch runs a dedicat
 | **Advantage variance spike** | The value function estimates just became unstable. | Advantage std > 3× rolling baseline |
 | **Loss NaN / Inf** | The optimizer has blown up; any further updates corrupt the policy. | Loss is non-finite (one step is enough) |
 | **Gradient norm spike** | Gradients exploded — usually the precursor to a loss NaN. | Grad norm > 3σ above frozen baseline |
+| **Reward mean drift** | Reward mean is drifting monotonically — suspicious for slow reward hacking. | Monotone for 50 steps with magnitude > 0.1 |
 
 Every detector has two severity levels (**warning** and **critical**), a configurable warmup period so it doesn't fire at step 3, and a cooldown so you don't get spammed.
 
@@ -53,9 +54,10 @@ Every detector has two severity levels (**warning** and **critical**), a configu
 ## Quick start
 
 ```bash
-pip install rlwatch                          # core library
+pip install rlwatch                          # core library (~20 MB)
 pip install "rlwatch[dashboard]"            # add the Streamlit dashboard
 pip install "rlwatch[trl]"                  # add HuggingFace TRL deep integration
+pip install "rlwatch[monitoring]"           # real Hartigan dip test for bimodal reward detection
 ```
 
 ### Option A: two-line attach (easiest)
@@ -194,7 +196,7 @@ Everything lives in a single SQLite file at `./rlwatch_logs/metrics.db`. Three t
 ## Supported frameworks
 
 - **HuggingFace TRL** — pass `attach(trainer=trainer)` for direct callback registration. See the [end-to-end tutorial](https://varun1724.github.io/rlwatch/tutorials/trl-grpo-end-to-end/) for a real GPT-2 + GRPO example that runs on CPU in ~5 minutes.
-- **veRL** — `framework="manual"` + `monitor.log_step()`. Deep integration on the roadmap.
+- **veRL** — auto-detected. Registers a custom tracking backend that forwards metrics to rlwatch. See [`docs/getting-started`](https://varun1724.github.io/rlwatch/getting-started/).
 - **OpenRLHF** — `framework="manual"` + `monitor.log_step()`. Deep integration on the roadmap.
 - **Anything else** — same as above. Every metric in `log_step` is optional; pass whatever your framework exposes.
 

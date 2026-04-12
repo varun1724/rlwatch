@@ -82,7 +82,16 @@ trainer.train()
 
 For a full end-to-end walkthrough that fires a real `entropy_collapse` alert on real TRL GRPO training in ~5 minutes on a CPU, see the [TRL + GRPO tutorial](tutorials/trl-grpo-end-to-end.md).
 
-## Manual mode (veRL / OpenRLHF / custom training loops)
+## veRL integration (auto-detected)
+
+```python
+import rlwatch
+rlwatch.attach()  # auto-detects veRL and registers a tracking backend
+```
+
+rlwatch registers a custom tracking backend with veRL's `Tracking` class. Metrics are mapped automatically: `actor/entropy` → `entropy`, `rewards/mean` → `reward_mean`, etc. If auto-registration doesn't work with your veRL version, see the fallback instructions in the log output.
+
+## Manual mode (OpenRLHF / custom training loops)
 
 ```python
 import rlwatch

@@ -12,6 +12,7 @@ rlwatch ships with six detectors. Each one watches a specific failure mode that 
 | [**Advantage variance spike**](advantage-variance.md) | The value function estimates just became unstable. | Advantage std > 3× rolling baseline |
 | [**Loss NaN / Inf**](loss-nan.md) | The optimizer has blown up; any further updates corrupt the policy. | Loss is non-finite (one step is enough) |
 | [**Gradient norm spike**](gradient-norm.md) | Gradients exploded — usually the precursor to a loss NaN. | Grad norm > 3σ above frozen baseline |
+| [**Reward mean drift**](reward-drift.md) | Reward mean is drifting monotonically — suspicious for slow reward hacking. | Monotone for 50 steps with magnitude > 0.1 |
 
 Every detector has two severity levels (**warning** and **critical**), a configurable warmup period so it doesn't fire at step 3, and a cooldown so you don't get spammed.
 

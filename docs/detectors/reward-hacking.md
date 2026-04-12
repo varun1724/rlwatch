@@ -11,7 +11,7 @@ Two parallel checks every step:
 
 2. **Bimodal distribution.** If you pass `rewards=ndarray` to `log_step` (so the detector can see individual sample rewards, not just the std), it accumulates them in a buffer of up to 200 samples and runs Hartigan's dip test for unimodality. When the dip test p-value is below `dip_test_significance`, fires a **warning**.
 
-The dip test currently uses a simplified home-rolled implementation. It is documented as approximate — replacing it with the real `diptest` package is on the roadmap for v0.4. The variance explosion check is the primary signal in practice; the bimodal check is best-effort.
+The dip test uses the real `diptest` package when installed (`pip install "rlwatch[monitoring]"`), which provides the actual Hartigan algorithm with precomputed critical-value tables. When `diptest` isn't installed, it falls back to a simplified home-rolled approximation that is good enough for strongly bimodal distributions but unreliable for borderline cases. The variance explosion check is the primary signal in practice; the bimodal check is complementary.
 
 ## Configuration
 
