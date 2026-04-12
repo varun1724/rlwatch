@@ -153,13 +153,9 @@ def main() -> int:
     try:
         trainer.train()
     finally:
+        # Read alerts BEFORE stop() — stop() closes the SQLite connection.
+        alerts = monitor.store.get_alerts()
         monitor.stop()
-
-    # ------------------------------------------------------------------
-    # Summary. The training-time alert already printed; this is the
-    # post-mortem the user reads after the run finishes.
-    # ------------------------------------------------------------------
-    alerts = monitor.store.get_alerts()
     print("\n" + "=" * 64)
     print(f"Tutorial complete. {len(alerts)} alert(s) fired.")
     print("=" * 64)

@@ -172,6 +172,28 @@ class TestSchemaMigration:
             MetricStore(_make_config(tmp_log_dir))
 
 
+class TestStoreAfterClose:
+    def test_get_alerts_returns_empty_after_close(self, tmp_log_dir):
+        store = MetricStore(_make_config(tmp_log_dir))
+        store.close()
+        assert store.get_alerts() == []
+
+    def test_get_metrics_returns_empty_after_close(self, tmp_log_dir):
+        store = MetricStore(_make_config(tmp_log_dir))
+        store.close()
+        assert store.get_metrics() == []
+
+    def test_get_all_runs_returns_empty_after_close(self, tmp_log_dir):
+        store = MetricStore(_make_config(tmp_log_dir))
+        store.close()
+        assert store.get_all_runs() == []
+
+    def test_get_latest_metrics_returns_empty_after_close(self, tmp_log_dir):
+        store = MetricStore(_make_config(tmp_log_dir))
+        store.close()
+        assert store.get_latest_metrics() == []
+
+
 class TestOpenStore:
     def test_open_existing_store(self, tmp_log_dir):
         # Initialize so the .db file exists.

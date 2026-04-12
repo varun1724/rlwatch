@@ -205,7 +205,12 @@ class MetricStore:
         self._conn.commit()
 
     def get_metrics(self, run_id: Optional[str] = None) -> list[dict]:
-        """Retrieve all metrics for a run."""
+        """Retrieve all metrics for a run.
+
+        Returns an empty list if the store has been closed.
+        """
+        if self._conn is None:
+            return []
         rid = run_id or self.run_id
         cursor = self._conn.execute(
             "SELECT * FROM metrics WHERE run_id = ? ORDER BY step", (rid,)
@@ -214,7 +219,12 @@ class MetricStore:
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     def get_alerts(self, run_id: Optional[str] = None) -> list[dict]:
-        """Retrieve all alerts for a run."""
+        """Retrieve all alerts for a run.
+
+        Returns an empty list if the store has been closed.
+        """
+        if self._conn is None:
+            return []
         rid = run_id or self.run_id
         cursor = self._conn.execute(
             "SELECT * FROM alerts WHERE run_id = ? ORDER BY step", (rid,)
@@ -223,13 +233,23 @@ class MetricStore:
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     def get_all_runs(self) -> list[dict]:
-        """Retrieve all runs."""
+        """Retrieve all runs.
+
+        Returns an empty list if the store has been closed.
+        """
+        if self._conn is None:
+            return []
         cursor = self._conn.execute("SELECT * FROM runs ORDER BY started_at DESC")
         columns = [desc[0] for desc in cursor.description]
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     def get_latest_metrics(self, run_id: Optional[str] = None, limit: int = 1000) -> list[dict]:
-        """Retrieve latest N metrics for a run."""
+        """Retrieve latest N metrics for a run.
+
+        Returns an empty list if the store has been closed.
+        """
+        if self._conn is None:
+            return []
         rid = run_id or self.run_id
         cursor = self._conn.execute(
             "SELECT * FROM metrics WHERE run_id = ? ORDER BY step DESC LIMIT ?",
