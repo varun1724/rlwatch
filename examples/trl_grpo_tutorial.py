@@ -118,11 +118,10 @@ def main() -> int:
         per_device_train_batch_size=2,
         gradient_accumulation_steps=1,
         num_generations=2,                   # GRPO requires >1
-        max_prompt_length=32,
         max_completion_length=8,
         logging_steps=5,
         save_strategy="no",
-        report_to=[],                        # no W&B / no tensorboard
+        report_to="none",
         seed=SEED,
         # Use CPU explicitly so the tutorial is reproducible across machines.
         use_cpu=True,
