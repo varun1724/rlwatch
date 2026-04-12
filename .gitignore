@@ -40,3 +40,6 @@ Thumbs.db
 
 # Local tooling output
 arlo_manifest.json
+
+# mkdocs build output
+site/

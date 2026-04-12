@@ -64,9 +64,9 @@ Status: 🟢 Shipped in v0.2.0 (stage one) · Why: this is the single biggest ri
 - [ ] Auto-detection test matrix: import the framework, call `attach()`, assert the right integration path fires
 
 ### 1.4 Alert channels
-- [ ] PagerDuty (critical alerts to on-call rotation)
-- [ ] Discord webhook (a lot of open-source ML teams live there)
-- [ ] Generic webhook with templated JSON body
+- [ ] PagerDuty (critical alerts to on-call rotation) — *deferred to v0.4, enterprise channel needs real customer to design against*
+- [x] Discord webhook (a lot of open-source ML teams live there) — shipped in v0.3.0
+- [x] Generic webhook with templated JSON body — shipped in v0.3.0 with `string.Template` `${field}` substitution
 
 ### 1.5 Dashboard polish
 - [ ] Run comparison view (overlay metrics from 2+ runs)
@@ -75,10 +75,10 @@ Status: 🟢 Shipped in v0.2.0 (stage one) · Why: this is the single biggest ri
 - [ ] Auto-refresh toggle
 
 ### 1.6 Docs & examples
-- [ ] Full docs site (`mkdocs-material`)
-- [ ] End-to-end tutorial: train Qwen-0.5B with TRL + GRPO on GSM8K with rlwatch attached
-- [ ] Playbook: "Your entropy is collapsing, here's what to try"
-- [ ] Case studies / postmortems (even synthetic ones to start)
+- [x] Full docs site (`mkdocs-material`) — shipped in v0.3.0 at https://varun1724.github.io/rlwatch/
+- [x] End-to-end tutorial: train **GPT-2** with TRL + GRPO on a synthetic dataset with rlwatch attached — shipped in v0.3.0. *Originally planned as Qwen-0.5B + GSM8K but switched to GPT-2 + synthetic for CPU feasibility — Qwen on CPU is unworkable and Colab-only is an adoption-killer.*
+- [ ] Playbook: "Your entropy is collapsing, here's what to try" — *partially covered by per-detector docs pages; full playbook deferred to v0.4*
+- [ ] Case studies / postmortems (even synthetic ones to start) — *deferred until we have real users*
 
 **Exit criteria for Phase 1:** 100+ GitHub stars, 500+ monthly PyPI downloads, at least 3 external users who have filed issues or PRs. Test suite > 90% coverage, all CI green on every PR.
 

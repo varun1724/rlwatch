@@ -1,10 +1,16 @@
 # rlwatch
 
+[![PyPI version](https://img.shields.io/pypi/v/rlwatch.svg)](https://pypi.org/project/rlwatch/)
+[![Python versions](https://img.shields.io/pypi/pyversions/rlwatch.svg)](https://pypi.org/project/rlwatch/)
+[![CI](https://github.com/varun1724/rlwatch/actions/workflows/test.yml/badge.svg)](https://github.com/varun1724/rlwatch/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/pypi/l/rlwatch.svg)](https://github.com/varun1724/rlwatch/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-mkdocs--material-blue)](https://varun1724.github.io/rlwatch/)
+
 **Catch broken RL training runs before they waste your GPU budget.**
 
 If you train language models with GRPO or PPO, you already know the pain: you kick off a run on 8 H100s, go to sleep, and wake up to find the policy collapsed into repeating the same token 12 hours ago. Nobody saw it. Nothing paged. The run just quietly rotted.
 
-rlwatch is a tiny Python library that watches your training metrics in real time and pings you on Slack (or email) the moment things start going wrong — *before* the run is ruined.
+rlwatch is a tiny Python library that watches your training metrics in real time and pings you on Slack, Discord, email, or any HTTP endpoint the moment things start going wrong — *before* the run is ruined.
 
 ---
 
@@ -16,7 +22,7 @@ rlwatch is a tiny Python library that watches your training metrics in real time
    import rlwatch
    rlwatch.attach()
    ```
-3. Keep training. If something breaks, you get a Slack message like:
+3. Keep training. If something breaks, you get a message like:
 
    > 🚨 **rlwatch CRITICAL: entropy_collapse**
    > Run: `grpo_v3_exp12` | Step: 340
@@ -47,19 +53,30 @@ Every detector has two severity levels (**warning** and **critical**), a configu
 ## Quick start
 
 ```bash
-pip install -e .
+pip install rlwatch                          # core library
+pip install "rlwatch[dashboard]"            # add the Streamlit dashboard
+pip install "rlwatch[trl]"                  # add HuggingFace TRL deep integration
 ```
 
 ### Option A: two-line attach (easiest)
 
 ```python
 import rlwatch
-rlwatch.attach()   # auto-detects TRL / veRL / OpenRLHF
-
-# ...your normal training code...
+rlwatch.attach()   # works for any framework — see below for the recommended TRL path
 ```
 
-rlwatch auto-detects HuggingFace TRL and registers a `TrainerCallback`. For veRL, OpenRLHF, or any custom loop, use Option B.
+For HuggingFace TRL, the recommended path is to pass the trainer in directly:
+
+```python
+import rlwatch
+from trl import GRPOTrainer
+
+trainer = GRPOTrainer(...)
+monitor = rlwatch.attach(trainer=trainer)
+trainer.train()
+```
+
+For veRL, OpenRLHF, or any custom loop, use Option B.
 
 ### Option B: manual metric logging
 
@@ -79,6 +96,7 @@ for step in range(num_steps):
         reward_std=rewards.std(),
         advantage_std=advantages.std(),
         loss=loss.item(),
+        grad_norm=grad_norm.item(),
     )
 ```
 
@@ -116,6 +134,29 @@ alerts:
       - you@yourcompany.com
 ```
 
+### Discord
+```bash
+export RLWATCH_DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+```
+Or in `rlwatch.yaml`:
+```yaml
+alerts:
+  discord:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    mention_role_ids: ["123456789012345678"]   # @-mentions on critical only
+```
+
+### Generic webhook
+The universal escape hatch — POST a JSON body to any URL. Use this for PagerDuty's events API, an internal incident tracker, Mattermost, or anything else rlwatch doesn't have a dedicated channel for.
+```yaml
+alerts:
+  webhook:
+    url: "https://your-service.example.com/rlwatch"
+    headers:
+      Authorization: "Bearer your-token"
+```
+Custom JSON template? See [`docs/alerts/webhook.md`](https://varun1724.github.io/rlwatch/alerts/webhook/).
+
 ### Console
 Always on. Rich-formatted panels show up in stderr regardless of other channels.
 
@@ -152,10 +193,10 @@ Everything lives in a single SQLite file at `./rlwatch_logs/metrics.db`. Three t
 
 ## Supported frameworks
 
-- **HuggingFace TRL** — auto-detected, registers a `TrainerCallback` that reads entropy, KL, reward, advantage, loss from `on_log`.
+- **HuggingFace TRL** — pass `attach(trainer=trainer)` for direct callback registration. See the [end-to-end tutorial](https://varun1724.github.io/rlwatch/tutorials/trl-grpo-end-to-end/) for a real GPT-2 + GRPO example that runs on CPU in ~5 minutes.
 - **veRL** — `framework="manual"` + `monitor.log_step()`. Deep integration on the roadmap.
 - **OpenRLHF** — `framework="manual"` + `monitor.log_step()`. Deep integration on the roadmap.
-- **Anything else** — same as above.
+- **Anything else** — same as above. Every metric in `log_step` is optional; pass whatever your framework exposes.
 
 ---
 
@@ -168,9 +209,13 @@ docker run -p 8501:8501 rlwatch
 
 ---
 
+## Documentation
+
+Full docs at **[varun1724.github.io/rlwatch](https://varun1724.github.io/rlwatch/)** — getting started, every detector explained in depth, alerts setup, configuration reference, the end-to-end TRL tutorial, and an FAQ.
+
 ## Project direction
 
-rlwatch is heading toward a hosted, team-oriented product. The local-first open-source library will stay free and useful on its own. See `ROADMAP.md` for the full plan.
+rlwatch is heading toward a hosted, team-oriented product. The local-first open-source library will stay free and useful on its own. See [`ROADMAP.md`](ROADMAP.md) for the full plan.
 
 ## Contributing & testing
 

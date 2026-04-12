@@ -1,0 +1,44 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - README.md
+      - src/rlwatch/**
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+# Cancel in-flight runs when a new commit lands on main — only the latest
+# main commit's docs should ever be deployed.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # mkdocs gh-deploy pushes to gh-pages branch
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # gh-deploy needs full history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install mkdocs-material and plugins
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install mkdocs-material mkdocs-include-markdown-plugin
+
+      - name: Build site (strict mode catches broken internal links)
+        run: mkdocs build --strict
+
+      - name: Deploy to gh-pages
+        run: mkdocs gh-deploy --force --no-history

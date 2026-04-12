@@ -1,0 +1,46 @@
+name: tutorial
+
+# Runs the end-to-end TRL GRPO tutorial script and asserts the headline
+# entropy_collapse alert fires. This is the regression guard for the
+# tutorial — if a future TRL release silently changes the GRPO loop in
+# a way that breaks the demo, the monthly cron catches it before users do.
+
+on:
+  # Re-run when the script or its CI workflow changes.
+  push:
+    branches: [main]
+    paths:
+      - examples/trl_grpo_tutorial.py
+      - tests/integration/test_trl_grpo_tutorial.py
+      - .github/workflows/tutorial.yml
+      - pyproject.toml
+  pull_request:
+    paths:
+      - examples/trl_grpo_tutorial.py
+      - tests/integration/test_trl_grpo_tutorial.py
+      - .github/workflows/tutorial.yml
+      - pyproject.toml
+  # Catches silent breakage from upstream TRL/transformers/torch releases.
+  schedule:
+    - cron: "0 9 1 * *"  # 09:00 UTC on the 1st of every month
+  workflow_dispatch:
+
+jobs:
+  run-tutorial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install rlwatch with [dev,trl,tutorial] extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,trl,tutorial]"
+
+      - name: Run the tutorial integration test
+        run: pytest tests/integration/test_trl_grpo_tutorial.py -v -m trl

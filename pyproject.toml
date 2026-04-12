@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rlwatch"
-version = "0.1.0"
+version = "0.3.0"
 description = "Real-time GRPO/PPO training instability detection for ML teams"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "rlwatch", email = "hello@rlwatch.dev"}
+    {name = "Varun Saraf", email = "varunsaraf1724@gmail.com"}
 ]
 keywords = ["reinforcement-learning", "GRPO", "PPO", "training", "monitoring", "debugging"]
 classifiers = [
@@ -18,25 +18,42 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
 ]
 dependencies = [
     "pyyaml>=6.0",
     "scipy>=1.10.0",
     "rich>=13.0.0",
     "slack-sdk>=3.20.0",
-    "streamlit>=1.30.0",
-    "plotly>=5.18.0",
     "click>=8.1.0",
-    "pandas>=2.0.0",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
+# Streamlit dashboard. Not in core because the transitive deps are ~150MB
+# and most users only need the alerting / log_step path.
+dashboard = [
+    "streamlit>=1.30.0",
+    "plotly>=5.18.0",
+    "pandas>=2.0.0",
+]
 torch = ["torch>=2.0.0"]
 trl = ["trl>=0.7.0", "transformers>=4.35.0"]
+# The end-to-end tutorial pins exact versions known-working with
+# examples/trl_grpo_tutorial.py. The monthly tutorial CI cron catches
+# silent breakage on future TRL releases.
+tutorial = [
+    "trl>=0.11.0",
+    "transformers>=4.45.0",
+    "torch>=2.1.0",
+    "datasets>=2.14.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21.0",
@@ -44,18 +61,26 @@ dev = [
     "pytest-benchmark>=4.0.0",
     "hypothesis>=6.90.0",
     "responses>=0.24.0",
+    # dev includes the dashboard so the dashboard tests can run.
+    "streamlit>=1.30.0",
+    "plotly>=5.18.0",
+    "pandas>=2.0.0",
 ]
 
 [project.scripts]
 rlwatch = "rlwatch.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/rlwatch/rlwatch"
-Documentation = "https://github.com/rlwatch/rlwatch#readme"
-Issues = "https://github.com/rlwatch/rlwatch/issues"
+Homepage = "https://github.com/varun1724/rlwatch"
+Documentation = "https://varun1724.github.io/rlwatch/"
+Issues = "https://github.com/varun1724/rlwatch/issues"
+Changelog = "https://github.com/varun1724/rlwatch/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"rlwatch" = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

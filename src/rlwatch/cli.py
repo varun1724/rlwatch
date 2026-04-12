@@ -245,6 +245,21 @@ def runs(log_dir: str):
 @click.option("--host", default="0.0.0.0", help="Dashboard host")
 def dashboard(log_dir: str, port: int, host: str):
     """Launch the Streamlit monitoring dashboard."""
+    # streamlit, plotly, and pandas live behind the [dashboard] extra to keep
+    # the default install lean. If the extra isn't installed, give the user a
+    # one-line install hint and exit cleanly.
+    try:
+        import streamlit  # noqa: F401
+    except ImportError:
+        # Escape the brackets with `\[` so Rich doesn't interpret
+        # `[dashboard]` as a markup tag and strip it from the output.
+        console.print(
+            "[red]The Streamlit dashboard is not installed.[/]\n"
+            "Install the optional dashboard extra with:\n"
+            "  [bold]pip install \"rlwatch\\[dashboard]\"[/]"
+        )
+        raise SystemExit(1)
+
     dashboard_path = Path(__file__).parent / "dashboard.py"
 
     console.print(f"[bold green]Starting rlwatch dashboard...[/]")

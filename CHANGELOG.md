@@ -6,6 +6,73 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-11 — stage two of Phase 1, first PyPI release
+
+### Added
+- **Discord webhook alert channel** — `DiscordConfig` dataclass, `_DiscordSender`
+  using stdlib `urllib.request`, `RLWATCH_DISCORD_WEBHOOK_URL` env var,
+  optional role @-mentions on critical alerts only. 11 integration tests.
+- **Generic HTTP webhook alert channel** — `WebhookConfig` (url, method,
+  headers, template_json, timeout), `_WebhookSender` using `string.Template`
+  `${field}` substitution into a JSON payload. Default template ships;
+  custom templates supported. `_json_escape` helper for safe substitution
+  of arbitrary string content (quotes, backslashes, newlines, unicode).
+  Substituted body validated with `json.loads` before sending. 19 integration
+  tests including the JSON-escape edge cases.
+- **mkdocs-material documentation site** at `https://varun1724.github.io/rlwatch/`.
+  Pages: index, getting-started, six per-detector deep dives, configuration,
+  CLI, five per-channel alert pages, end-to-end TRL tutorial, FAQ, contributing,
+  v0.3.0 launch blog post. README stays the source of truth for the pitch
+  and detector table; docs cross-link, never duplicate.
+- **End-to-end TRL GRPO tutorial** — GPT-2 + 20-prompt synthetic dataset +
+  TRL `GRPOTrainer` with deliberately misconfigured LR (`1e-3`) that
+  induces a real entropy collapse around step ~150. Runs on CPU in
+  ~5 minutes, deterministic seeds. Lives as both `examples/trl_grpo_tutorial.py`
+  and `docs/tutorials/trl-grpo-end-to-end.md`. Monthly CI cron in
+  `.github/workflows/tutorial.yml` asserts the alert still fires on future
+  TRL releases.
+- **`[tutorial]` extra** in `pyproject.toml` pinning `trl`, `transformers`,
+  `torch`, `datasets` to known-working versions for the tutorial.
+- **`py.typed` marker** — rlwatch is now a typed package; downstream type
+  checkers respect our type hints.
+- **`release.yml` workflow** — OIDC trusted-publisher PyPI release workflow
+  triggered on `v*.*.*` tags. Three jobs: build sdist+wheel, run full
+  non-TRL test suite + 90% coverage gate, publish to PyPI via OIDC and
+  create the GitHub release. Manual approval gate via the `pypi` GitHub
+  Environment.
+- **`docs.yml` workflow** — deploys mkdocs-material to GitHub Pages on
+  every push to `main` that touches docs, mkdocs.yml, README, or `src/`.
+  `mkdocs build --strict` catches broken internal links.
+
+### Changed
+- **`streamlit`, `plotly`, and `pandas` moved out of core dependencies into
+  the `[dashboard]` extra.** This shrinks the default `pip install rlwatch`
+  install footprint by ~7x (from ~150MB to ~20MB). The `rlwatch dashboard`
+  CLI now prints a friendly install hint and exits non-zero if the extra
+  isn't installed. Existing dashboard users need to switch to
+  `pip install "rlwatch[dashboard]"`. **Breaking install-time change.**
+- **README polish** — install line now points at PyPI; PyPI/Python/CI/license/docs
+  badges added at the top; Discord and webhook subsections added under
+  "Setting up alerts"; "Supported frameworks" section updated to reflect
+  the `attach(trainer=...)` recommended path; new Documentation section
+  pointing at the docs site.
+- **`pyproject.toml` metadata** — version `0.3.0`, real homepage URL
+  (`github.com/varun1724/rlwatch`), real changelog/docs URL entries,
+  `Typing :: Typed` and Linux/macOS classifiers.
+- **`load_config` `RLWATCH_DISCORD_WEBHOOK_URL`, `RLWATCH_WEBHOOK_URL`,
+  `RLWATCH_WEBHOOK_TEMPLATE`** env vars added to the env_map. Discord and
+  webhook channels auto-enable when their URL is set.
+- **TRL example** — `examples/trl_integration.py` (a stub with commented-out
+  code) replaced by `examples/trl_grpo_tutorial.py` (a real, runnable,
+  CPU-friendly tutorial).
+
+### Notes
+- v0.2.0 ships as a historical git tag only — no PyPI release. The PyPI
+  debut is v0.3.0, which contains v0.2.0's content plus the adoption-focus
+  work in this section.
+- Coverage stays at 91.6% on `src/rlwatch/` (`dashboard.py` excluded).
+- Total tests: 182 + 2 skipped (TRL gated to dedicated CI job).
+
 ## [0.2.0] — 2026-04-11 — stage one of Phase 1
 
 ### Added — test harness (ROADMAP 1.1)

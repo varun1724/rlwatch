@@ -1,0 +1,85 @@
+site_name: rlwatch
+site_description: Real-time GRPO/PPO training instability detection for ML teams
+site_url: https://varun1724.github.io/rlwatch/
+repo_url: https://github.com/varun1724/rlwatch
+repo_name: varun1724/rlwatch
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - include-markdown
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Detectors:
+      - Overview: detectors/index.md
+      - Entropy collapse: detectors/entropy-collapse.md
+      - KL divergence explosion: detectors/kl-explosion.md
+      - Reward hacking: detectors/reward-hacking.md
+      - Advantage variance: detectors/advantage-variance.md
+      - Loss NaN/Inf: detectors/loss-nan.md
+      - Gradient norm spike: detectors/gradient-norm.md
+  - Configuration: configuration.md
+  - CLI: cli.md
+  - Alerts:
+      - Overview: alerts/index.md
+      - Slack: alerts/slack.md
+      - Email: alerts/email.md
+      - Discord: alerts/discord.md
+      - Generic webhook: alerts/webhook.md
+  - Tutorials:
+      - TRL + GRPO end-to-end: tutorials/trl-grpo-end-to-end.md
+  - FAQ: faq.md
+  - Blog:
+      - "v0.3.0 launch": blog/0.3.0-launch.md
+  - Contributing: contributing.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/varun1724/rlwatch
