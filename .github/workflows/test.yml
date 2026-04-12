@@ -98,7 +98,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev,trl]"
       - name: Run TRL integration tests
-        run: pytest tests/integration -v -m trl
+        run: pytest tests/integration/test_trl_integration.py -v
 
   # ---------------------------------------------------------------------------
   # Tier 5: performance benchmarks. Linux-only — macOS runners are too noisy
