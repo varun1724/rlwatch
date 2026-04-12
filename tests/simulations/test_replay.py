@@ -66,6 +66,12 @@ FIXTURES = [
         # spike crosses the 1.5x sigma threshold.
         {("gradient_norm_spike", "warning"), ("gradient_norm_spike", "critical")},
     ),
+    (
+        "reward_mean_slow_drift",
+        generators.reward_mean_slow_drift,
+        {"n_steps": 200, "seed": 0},
+        {("reward_mean_drift", "warning")},
+    ),
 ]
 
 
@@ -84,6 +90,9 @@ def _make_monitor(tmp_log_dir: str, run_id: str) -> RLWatch:
     cfg.gradient_norm_spike.warmup_steps = 5
     cfg.gradient_norm_spike.rolling_window = 30
     cfg.gradient_norm_spike.baseline_mode = "frozen"
+    cfg.reward_mean_drift.warmup_steps = 5
+    cfg.reward_mean_drift.consecutive_steps = 20
+    cfg.reward_mean_drift.min_drift_magnitude = 0.05
     # Wide cooldown so we see at least one of each tier.
     cfg.alerts.cooldown_steps = 10
     cfg.alerts.max_alerts_per_run = 1000
@@ -123,4 +132,4 @@ def test_replay_matches_expected_alerts(
 
 def test_fixture_set_is_nonempty():
     """Guard against accidental fixture deletion."""
-    assert len(FIXTURES) >= 6
+    assert len(FIXTURES) >= 7

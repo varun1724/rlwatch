@@ -16,9 +16,15 @@ caller passes a raw ``rewards`` array, which exercises:
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from rlwatch.config import RewardHackingConfig
-from rlwatch.detectors import RewardHackingDetector, _hartigan_dip_test
+from rlwatch.detectors import (
+    HAS_DIPTEST,
+    RewardHackingDetector,
+    _hartigan_dip_test,
+    _simplified_dip_test,
+)
 
 
 class TestHartiganDipTestDirectly:
@@ -154,3 +160,55 @@ class TestRewardsArrayBranch:
         det = RewardHackingDetector(cfg)
         for step in range(50):
             assert det.check(step) is None
+
+
+class TestDiptestIntegration:
+    """Tests for the optional ``diptest`` package integration.
+
+    The dispatcher function ``_hartigan_dip_test`` uses the real ``diptest``
+    package when installed (``HAS_DIPTEST=True``) and falls back to the
+    home-rolled ``_simplified_dip_test`` when not.
+    """
+
+    def test_simplified_fallback_always_available(self):
+        """The simplified implementation is always callable regardless of
+        whether the real package is installed."""
+        rng = np.random.default_rng(0)
+        data = rng.normal(0, 1, size=100)
+        dip, p = _simplified_dip_test(data)
+        assert dip >= 0.0
+        assert 0.0 <= p <= 1.0
+
+    def test_dispatcher_returns_valid_tuple(self):
+        """The dispatcher function returns (float, float) in both paths."""
+        rng = np.random.default_rng(0)
+        data = rng.normal(0, 1, size=100)
+        dip, p = _hartigan_dip_test(data)
+        assert isinstance(dip, float)
+        assert isinstance(p, float)
+        assert dip >= 0.0
+        assert 0.0 <= p <= 1.0
+
+    def test_has_diptest_flag_is_boolean(self):
+        assert isinstance(HAS_DIPTEST, bool)
+
+    @pytest.mark.skipif(not HAS_DIPTEST, reason="diptest not installed")
+    def test_real_diptest_detects_bimodal(self):
+        """When the real package is installed, strongly bimodal data should
+        get a very low p-value (much more reliable than the simplified
+        version)."""
+        rng = np.random.default_rng(0)
+        data = np.concatenate([
+            rng.normal(-5, 0.1, 100),
+            rng.normal(5, 0.1, 100),
+        ])
+        dip, p = _hartigan_dip_test(data)
+        assert p < 0.01, f"real diptest should detect clear bimodal, got p={p}"
+
+    @pytest.mark.skipif(not HAS_DIPTEST, reason="diptest not installed")
+    def test_real_diptest_unimodal_high_pvalue(self):
+        """Unimodal data should NOT be flagged by the real implementation."""
+        rng = np.random.default_rng(42)
+        data = rng.normal(0, 1, size=200)
+        dip, p = _hartigan_dip_test(data)
+        assert p > 0.05, f"real diptest should not flag unimodal, got p={p}"

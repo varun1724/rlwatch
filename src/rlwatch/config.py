@@ -84,6 +84,23 @@ class GradientNormSpikeConfig:
 
 
 @dataclass
+class RewardMeanDriftConfig:
+    """Configuration for the reward mean drift detector.
+
+    Fires when reward_mean moves monotonically in one direction for
+    ``consecutive_steps`` steps, AND the total magnitude of the drift
+    exceeds ``min_drift_magnitude``. Catches slow reward hacking where
+    the variance doesn't spike but the mean is drifting suspiciously.
+    """
+    enabled: bool = True
+    consecutive_steps: int = 50
+    warmup_steps: int = 50
+    # Minimum total drift magnitude over the window to alert. Avoids
+    # firing on reward_mean that's technically monotone but nearly flat.
+    min_drift_magnitude: float = 0.1
+
+
+@dataclass
 class SlackConfig:
     """Slack alert configuration."""
     enabled: bool = False
@@ -176,6 +193,7 @@ class RLWatchConfig:
     advantage_variance: AdvantageVarianceConfig = field(default_factory=AdvantageVarianceConfig)
     loss_nan: LossNaNConfig = field(default_factory=LossNaNConfig)
     gradient_norm_spike: GradientNormSpikeConfig = field(default_factory=GradientNormSpikeConfig)
+    reward_mean_drift: RewardMeanDriftConfig = field(default_factory=RewardMeanDriftConfig)
     alerts: AlertConfig = field(default_factory=AlertConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     dashboard: DashboardConfig = field(default_factory=DashboardConfig)
@@ -229,6 +247,10 @@ def _dict_to_config(data: dict) -> RLWatchConfig:
     if "gradient_norm_spike" in data:
         for k, v in data["gradient_norm_spike"].items():
             setattr(cfg.gradient_norm_spike, k, v)
+
+    if "reward_mean_drift" in data:
+        for k, v in data["reward_mean_drift"].items():
+            setattr(cfg.reward_mean_drift, k, v)
 
     if "alerts" in data:
         alerts = data["alerts"]

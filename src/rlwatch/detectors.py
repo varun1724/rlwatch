@@ -24,7 +24,19 @@ from rlwatch.config import (
     KLExplosionConfig,
     LossNaNConfig,
     RewardHackingConfig,
+    RewardMeanDriftConfig,
 )
+
+# Optional: use the real Hartigan dip test from the `diptest` package when
+# available. Falls back to the simplified home-rolled implementation when
+# not installed. Install via: pip install "rlwatch[monitoring]"
+try:
+    import diptest as _diptest_pkg
+
+    HAS_DIPTEST = True
+except ImportError:
+    _diptest_pkg = None  # type: ignore[assignment]
+    HAS_DIPTEST = False
 
 
 @dataclass
@@ -252,8 +264,30 @@ class KLExplosionDetector:
 def _hartigan_dip_test(data: np.ndarray) -> tuple[float, float]:
     """Compute Hartigan's dip test statistic for unimodality.
 
+    Returns ``(dip_statistic, p_value)``.
+
+    When the ``diptest`` package is installed (``pip install rlwatch[monitoring]``),
+    this delegates to ``diptest.diptest(data)`` which uses the real Hartigan
+    algorithm with precomputed critical-value tables. When it's not installed,
+    falls back to ``_simplified_dip_test`` — a home-rolled approximation that
+    is documented as inaccurate for borderline cases.
+    """
+    if HAS_DIPTEST:
+        dip, p = _diptest_pkg.diptest(data)
+        return float(dip), float(p)
+    return _simplified_dip_test(data)
+
+
+def _simplified_dip_test(data: np.ndarray) -> tuple[float, float]:
+    """Simplified (home-rolled) Hartigan dip test.
+
+    This is the fallback when the ``diptest`` package isn't installed. It
+    approximates the dip statistic as the max deviation between the empirical
+    CDF and a uniform CDF, with a stepped p-value lookup. Accurate enough to
+    catch strongly bimodal distributions (two well-separated clusters) but
+    unreliable for borderline cases.
+
     Returns (dip_statistic, p_value).
-    Uses a simplified implementation suitable for online monitoring.
     """
     if len(data) < 10:
         return 0.0, 1.0
@@ -634,6 +668,139 @@ class GradientNormSpikeDetector:
         return None
 
 
+class RewardMeanDriftDetector:
+    """Detects sustained monotone drift in the reward mean.
+
+    This catches the subtle failure mode where the reward function is being
+    gamed *slowly* — the variance doesn't spike (so ``RewardHackingDetector``
+    doesn't fire), but the mean is drifting monotonically in one direction
+    for an extended period. This is suspicious when it persists for many
+    consecutive steps, especially late in training when the reward mean
+    should be plateau-ing.
+
+    Only fires **warning** (not critical) — monotone drift is suspicious
+    but not catastrophic. It could also be legitimate improvement on a
+    well-designed reward function, so the recommendation tells the user
+    to investigate rather than stop immediately.
+    """
+
+    def __init__(self, config: RewardMeanDriftConfig):
+        self.config = config
+        self._step_count = 0
+        self._prev_reward_mean: Optional[float] = None
+        self._consecutive_up = 0
+        self._consecutive_down = 0
+        self._drift_start_value: Optional[float] = None
+        self._warning_fired_up = False
+        self._warning_fired_down = False
+
+    def check(self, step: int, reward_mean: Optional[float]) -> Optional[Alert]:
+        if not self.config.enabled or reward_mean is None:
+            return None
+
+        self._step_count += 1
+        if self._step_count < self.config.warmup_steps:
+            self._prev_reward_mean = reward_mean
+            return None
+
+        if self._prev_reward_mean is None:
+            self._prev_reward_mean = reward_mean
+            return None
+
+        if reward_mean > self._prev_reward_mean:
+            if self._consecutive_up == 0:
+                self._drift_start_value = self._prev_reward_mean
+            self._consecutive_up += 1
+            # Reset the opposite direction.
+            self._consecutive_down = 0
+            self._warning_fired_down = False
+        elif reward_mean < self._prev_reward_mean:
+            if self._consecutive_down == 0:
+                self._drift_start_value = self._prev_reward_mean
+            self._consecutive_down += 1
+            self._consecutive_up = 0
+            self._warning_fired_up = False
+        else:
+            # Exact equality — doesn't count as either direction.
+            self._consecutive_up = 0
+            self._consecutive_down = 0
+            self._warning_fired_up = False
+            self._warning_fired_down = False
+            self._drift_start_value = None
+
+        self._prev_reward_mean = reward_mean
+
+        # Check upward drift.
+        if (
+            self._consecutive_up >= self.config.consecutive_steps
+            and not self._warning_fired_up
+            and self._drift_start_value is not None
+        ):
+            magnitude = abs(reward_mean - self._drift_start_value)
+            if magnitude >= self.config.min_drift_magnitude:
+                self._warning_fired_up = True
+                return Alert(
+                    detector="reward_mean_drift",
+                    severity="warning",
+                    step=step,
+                    message=(
+                        f"Reward mean has been drifting upward monotonically for "
+                        f"{self._consecutive_up} consecutive steps "
+                        f"(from {self._drift_start_value:.4f} to {reward_mean:.4f}, "
+                        f"magnitude {magnitude:.4f})."
+                    ),
+                    metric_values={
+                        "reward_mean": reward_mean,
+                        "drift_start": self._drift_start_value,
+                        "drift_magnitude": magnitude,
+                        "consecutive_steps": self._consecutive_up,
+                        "direction": "up",
+                    },
+                    recommendation=(
+                        "Reward mean has been increasing monotonically for an "
+                        "extended period. This may indicate reward hacking via "
+                        "distribution shift rather than variance explosion. "
+                        "Inspect the completions to check for exploitation patterns."
+                    ),
+                )
+
+        # Check downward drift.
+        if (
+            self._consecutive_down >= self.config.consecutive_steps
+            and not self._warning_fired_down
+            and self._drift_start_value is not None
+        ):
+            magnitude = abs(reward_mean - self._drift_start_value)
+            if magnitude >= self.config.min_drift_magnitude:
+                self._warning_fired_down = True
+                return Alert(
+                    detector="reward_mean_drift",
+                    severity="warning",
+                    step=step,
+                    message=(
+                        f"Reward mean has been drifting downward monotonically for "
+                        f"{self._consecutive_down} consecutive steps "
+                        f"(from {self._drift_start_value:.4f} to {reward_mean:.4f}, "
+                        f"magnitude {magnitude:.4f})."
+                    ),
+                    metric_values={
+                        "reward_mean": reward_mean,
+                        "drift_start": self._drift_start_value,
+                        "drift_magnitude": magnitude,
+                        "consecutive_steps": self._consecutive_down,
+                        "direction": "down",
+                    },
+                    recommendation=(
+                        "Reward mean has been decreasing monotonically for an "
+                        "extended period. This may indicate policy degradation "
+                        "or a reward function that's becoming harder to satisfy. "
+                        "Check the training dynamics."
+                    ),
+                )
+
+        return None
+
+
 class DetectorSuite:
     """Runs all configured detectors on each training step."""
 
@@ -644,6 +811,7 @@ class DetectorSuite:
         self.advantage_detector = AdvantageVarianceDetector(config.advantage_variance)
         self.loss_nan_detector = LossNaNDetector(config.loss_nan)
         self.grad_norm_detector = GradientNormSpikeDetector(config.gradient_norm_spike)
+        self.reward_drift_detector = RewardMeanDriftDetector(config.reward_mean_drift)
 
     def check_step(
         self,
@@ -687,6 +855,10 @@ class DetectorSuite:
             alerts.append(result)
 
         result = self.grad_norm_detector.check(step, grad_norm)
+        if result:
+            alerts.append(result)
+
+        result = self.reward_drift_detector.check(step, reward_mean)
         if result:
             alerts.append(result)
 

@@ -43,6 +43,9 @@ dashboard = [
     "plotly>=5.18.0",
     "pandas>=2.0.0",
 ]
+# Real Hartigan dip test for bimodal reward detection. Optional because it
+# has a C extension (though pre-built wheels exist for all major platforms).
+monitoring = ["diptest>=0.10.0"]
 torch = ["torch>=2.0.0"]
 trl = ["trl>=0.7.0", "transformers>=4.35.0"]
 # The end-to-end tutorial pins exact versions known-working with

@@ -166,3 +166,26 @@ def gradient_norm_spike(
             "grad_norm": grad_norm,
         })
     return rows
+
+
+def reward_mean_slow_drift(
+    n_steps: int = 200, seed: int = 0
+) -> list[dict]:
+    """Reward mean increases monotonically by 0.01 per step.
+
+    The variance stays stable — this is the signature of slow reward
+    hacking via distribution shift rather than variance explosion.
+    """
+    rows = []
+    for step in range(n_steps):
+        rows.append({
+            "step": step,
+            "entropy": 2.5,
+            "kl_divergence": 0.01,
+            "reward_mean": -1.0 + 0.01 * step,
+            "reward_std": 0.5,
+            "advantage_std": 1.0,
+            "loss": 0.3,
+            "grad_norm": 1.0,
+        })
+    return rows
