@@ -20,7 +20,13 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.integration, pytest.mark.trl]
+# Use a dedicated "tutorial" marker — NOT "trl". The quick trl CI job
+# (test.yml) runs `pytest -m trl` against the lightweight callback-
+# registration test. The heavyweight tutorial test belongs to its own
+# dedicated workflow (tutorial.yml) and should not be collected by the trl
+# job, which installs [dev,trl] but not [tutorial] (so the pinned versions
+# the tutorial depends on may not match).
+pytestmark = [pytest.mark.integration, pytest.mark.tutorial]
 
 # Skip the whole module if the tutorial deps aren't present.
 pytest.importorskip("trl")

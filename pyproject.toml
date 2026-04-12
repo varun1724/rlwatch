@@ -89,6 +89,7 @@ markers = [
     "integration: integration tests touching real SQLite/SMTP/HTTP (Tier 4)",
     "property: Hypothesis property-based tests (Tier 2)",
     "trl: requires the [trl] extra (transformers + trl)",
+    "tutorial: heavyweight end-to-end tutorial test — runs only in the dedicated tutorial.yml workflow",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:streamlit",

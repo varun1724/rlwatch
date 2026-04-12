@@ -66,7 +66,7 @@ jobs:
         run: |
           pytest \
             tests/unit tests/property tests/simulations tests/integration \
-            -m "not trl and not perf" \
+            -m "not trl and not perf and not tutorial" \
             --cov=rlwatch \
             --cov-fail-under=90
 
