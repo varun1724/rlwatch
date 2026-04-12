@@ -6,6 +6,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-04-11
+
+### Fixed
+- `rlwatch.__version__` was stuck at `"0.1.0"` — never bumped when
+  `pyproject.toml` moved to `0.3.0`. Now `0.3.1` and both sources agree.
+- `rlwatch --version` CLI was hardcoded to `0.1.0`. Now reads from
+  installed package metadata via `click.version_option(package_name=...)`,
+  so it can never drift again.
+
 ## [0.3.0] — 2026-04-11 — stage two of Phase 1, first PyPI release
 
 ### Added

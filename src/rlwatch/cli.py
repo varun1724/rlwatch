@@ -24,7 +24,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="rlwatch")
+@click.version_option(version=None, prog_name="rlwatch", package_name="rlwatch")
 def main():
     """rlwatch — GRPO/PPO training instability detection."""
     pass
