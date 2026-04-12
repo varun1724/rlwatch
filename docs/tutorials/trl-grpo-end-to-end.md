@@ -38,7 +38,7 @@ python examples/trl_grpo_tutorial.py
 
 3. **Builds a 20-prompt synthetic dataset.** The "task" is: respond with the word "YES". Reward function returns `1.0` if the completion starts with YES (case-insensitive) and `0.0` otherwise. Trivially easy for a real model — but with a deliberately too-high LR, GRPO collapses entropy long before it learns to do it reliably.
 
-4. **Builds a `GRPOConfig` with `learning_rate=1e-3`.** That's an order of magnitude above what's safe for a 124M model. A healthy LR for this setup is around `5e-6`. The high LR is the bug we want rlwatch to catch.
+4. **Builds a `GRPOConfig` with `learning_rate=1e-2` and `loss_type="grpo"`.** The LR is an order of magnitude above what's safe. The `loss_type="grpo"` uses classic GRPO loss (TRL 1.1.0+ defaults to "dapo" which clips gradients too aggressively for a collapse demo). Combined with `num_iterations=3` (multiple gradient steps per batch), this reliably collapses entropy within the first ~150 steps.
 
 5. **Calls `rlwatch.attach(trainer=trainer)`.** Two-line attach. The TRL deep-integration callback is registered directly on the trainer.
 
@@ -89,7 +89,7 @@ To prove the alert fires for the *right* reason and not because rlwatch is overe
 ```python
 args = GRPOConfig(
     output_dir="./_rlwatch_tutorial_output",
-    learning_rate=5e-6,                  # was 1e-3 — now safe
+    learning_rate=5e-6,                  # was 1e-2 — now safe
     # ... everything else the same ...
 )
 ```

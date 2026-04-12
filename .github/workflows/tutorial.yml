@@ -29,12 +29,6 @@ jobs:
   run-tutorial:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # Informational until the tutorial is debugged against the exact TRL
-    # version CI installs. The tutorial is documented as "expected step ±50,
-    # may need version tuning" — a red here means the tutorial needs a pin
-    # update, not that the library is broken. Remove continue-on-error once
-    # the tutorial is validated end-to-end on CI hardware.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 

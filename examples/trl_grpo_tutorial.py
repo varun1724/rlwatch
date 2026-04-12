@@ -113,18 +113,22 @@ def main() -> int:
     print("[3/4] Building GRPOTrainer (LR is deliberately too high)...")
     args = GRPOConfig(
         output_dir="./_rlwatch_tutorial_output",
-        learning_rate=1e-3,                  # deliberately too high
-        num_train_epochs=10,                 # ~200 steps total on this dataset
+        learning_rate=1e-2,                  # deliberately too high (10x safe)
+        num_train_epochs=5,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=1,
         num_generations=2,                   # GRPO requires >1
         max_completion_length=8,
-        logging_steps=5,
+        logging_steps=2,
         save_strategy="no",
         report_to="none",
         seed=SEED,
         # Use CPU explicitly so the tutorial is reproducible across machines.
         use_cpu=True,
+        # Classic GRPO loss — TRL 1.1.0 defaults to "dapo" which clips
+        # gradients too aggressively for a high-LR collapse demo.
+        loss_type="grpo",
+        num_iterations=3,                    # multiple grad steps per batch
     )
 
     trainer = GRPOTrainer(
