@@ -351,19 +351,56 @@ def _attach_trl(monitor: RLWatch, trainer=None):
 
 
 def _attach_verl(monitor: RLWatch):
-    """Attach to veRL framework."""
-    try:
-        # veRL uses a different callback mechanism
-        # We monkey-patch the common metric logging points
-        import verl
+    """Attach to veRL via a custom tracking backend.
 
-        logger.info(
-            "rlwatch ready for veRL. Use monitor.log_step() in your training loop "
-            "or pass metrics from veRL's callback system."
-        )
+    veRL doesn't have a TRL-style ``TrainerCallback`` API. Instead we
+    register an ``RLWatchVerLTracker`` as an additional tracking backend
+    alongside the user's existing loggers (WandB, MLflow, etc.). The
+    tracker receives every ``log(data, step)`` call and forwards mapped
+    metrics to ``monitor.log_step()``.
+
+    If veRL isn't installed, falls back to manual mode with a clear log
+    message.
+    """
+    try:
+        import verl  # noqa: F401
     except ImportError:
         logger.warning("veRL not found. Falling back to manual mode.")
         monitor.config.framework = "manual"
+        return
+
+    from rlwatch.integrations.verl_tracking import RLWatchVerLTracker
+
+    tracker = RLWatchVerLTracker(monitor)
+    monitor._verl_tracker = tracker  # keep a reference so it's not GC'd
+
+    # Try to register with veRL's Tracking system. The registration API
+    # may vary across veRL versions, so we attempt the known paths and
+    # fall back to manual if none work.
+    try:
+        from verl.utils.tracking import Tracking
+
+        # If Tracking has a register_backend or add_backend method, use it.
+        if hasattr(Tracking, "register_backend"):
+            Tracking.register_backend("rlwatch", tracker)
+            logger.info("rlwatch registered as veRL tracking backend")
+            return
+        if hasattr(Tracking, "add_backend"):
+            Tracking.add_backend("rlwatch", tracker)
+            logger.info("rlwatch registered as veRL tracking backend")
+            return
+    except (ImportError, AttributeError):
+        pass
+
+    # If we can't auto-register, tell the user how to wire it up manually.
+    logger.info(
+        "rlwatch veRL tracker ready. To wire it up, add the tracker to your\n"
+        "  veRL Tracking instance:\n"
+        "    from rlwatch.integrations.verl_tracking import RLWatchVerLTracker\n"
+        "    tracker = RLWatchVerLTracker(monitor)\n"
+        "    tracking.add_backend('rlwatch', tracker)\n"
+        "  Or use monitor.log_step() directly in your training loop."
+    )
 
 
 def _attach_openrlhf(monitor: RLWatch):
