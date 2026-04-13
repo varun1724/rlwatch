@@ -69,10 +69,10 @@ Status: 🟢 Shipped in v0.2.0 (stage one) · Why: this is the single biggest ri
 - [x] Generic webhook with templated JSON body — shipped in v0.3.0 with `string.Template` `${field}` substitution
 
 ### 1.5 Dashboard polish
-- [ ] Run comparison view (overlay metrics from 2+ runs)
-- [ ] Alert timeline across all runs
-- [ ] Metric query export (CSV / Parquet)
-- [ ] Auto-refresh toggle
+- [x] Run comparison view (overlay metrics from 2+ runs) — shipped in v0.5.0
+- [x] Alert timeline across all runs — shipped in v0.5.0
+- [x] Metric query export (CSV / Parquet) — shipped in v0.5.0
+- [x] Auto-refresh toggle (fixed infinite loop) — shipped in v0.5.0
 
 ### 1.6 Docs & examples
 - [x] Full docs site (`mkdocs-material`) — shipped in v0.3.0 at https://varun1724.github.io/rlwatch/

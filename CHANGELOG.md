@@ -6,6 +6,28 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-04-12 — stage four: dashboard polish
+
+### Added
+- **Run comparison view.** Select 2+ runs from a sidebar multiselect to
+  overlay their metrics on the same charts with distinct colors. Summary
+  metrics show per-run columns. Alert timeline and export include all
+  selected runs.
+- **Alert timeline.** Plotly scatter chart: X = training step, Y = detector
+  (categorical). Red dots for critical, orange for warning. Hover shows the
+  alert message. In comparison mode, dots are colored per run.
+- **CSV/Parquet export.** Download buttons for metrics (CSV + Parquet) and
+  alerts (CSV). In comparison mode, exports concatenated DataFrames with a
+  `run_id` column.
+- **Gradient norm chart** added to the dashboard (7th metric chart, was
+  missing from the original 6-chart layout).
+
+### Fixed
+- **Auto-refresh infinite loop.** The checkbox previously called `st.rerun()`
+  immediately, creating an infinite loop. Now sleeps 5 seconds before rerun,
+  placed at the end of the script so all widgets render before the sleep
+  blocks execution.
+
 ## [0.4.0] — 2026-04-12 — stage three: depth focus
 
 ### Added

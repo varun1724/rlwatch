@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rlwatch"
-version = "0.4.0"
+version = "0.5.0"
 description = "Real-time GRPO/PPO training instability detection for ML teams"
 readme = "README.md"
 license = {text = "MIT"}

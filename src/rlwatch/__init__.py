@@ -1,6 +1,6 @@
 """rlwatch - Real-time GRPO/PPO training instability detection."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from rlwatch.core import attach, log_step, get_monitor, RLWatch
 from rlwatch.config import RLWatchConfig, load_config
