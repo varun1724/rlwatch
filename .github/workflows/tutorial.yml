@@ -43,4 +43,4 @@ jobs:
           python -m pip install -e ".[dev,trl,tutorial]"
 
       - name: Run the tutorial integration test
-        run: pytest tests/integration/test_trl_grpo_tutorial.py -v -m trl
+        run: pytest tests/integration/test_trl_grpo_tutorial.py -v
