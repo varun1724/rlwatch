@@ -82,7 +82,7 @@ def main() -> int:
     # task for a real model — but with a *deliberately* too-high LR,
     # GRPO will collapse entropy long before it learns to do it reliably.
     # ------------------------------------------------------------------
-    print("[2/4] Building synthetic dataset (20 prompts)...")
+    print("[2/4] Building synthetic dataset (10 prompts)...")
     prompts = [
         "Reply YES if you understand:",
         "Confirm the request:",
@@ -94,7 +94,7 @@ def main() -> int:
         "Awaiting confirmation:",
         "Ready when you are:",
         "Please respond:",
-    ] * 2  # 20 prompts total
+    ]  # 10 prompts — small enough to finish in ~5 min on CI CPU
     dataset = Dataset.from_dict({"prompt": prompts})
 
     def reward_starts_with_yes(completions, **kwargs):
@@ -114,12 +114,12 @@ def main() -> int:
     args = GRPOConfig(
         output_dir="./_rlwatch_tutorial_output",
         learning_rate=1e-2,                  # deliberately too high (10x safe)
-        num_train_epochs=5,
+        num_train_epochs=3,                  # ~15 steps total (10 prompts ÷ batch 2 × 3 epochs)
         per_device_train_batch_size=2,
         gradient_accumulation_steps=1,
         num_generations=2,                   # GRPO requires >1
         max_completion_length=8,
-        logging_steps=2,
+        logging_steps=1,                     # log every step so the detector sees enough data
         save_strategy="no",
         report_to="none",
         seed=SEED,
@@ -148,10 +148,10 @@ def main() -> int:
         trainer=trainer,
         run_id="trl_grpo_tutorial",
         # Tighten the entropy collapse detector so it fires inside the
-        # 200-ish steps the tutorial runs for. Defaults are warmup=20,
+        # ~15 steps the tutorial runs. Defaults are warmup=20,
         # consecutive=50 — fine for production runs that go thousands of
         # steps, too patient for a 5-minute demo.
-        entropy_collapse={"warmup_steps": 5, "consecutive_steps": 15},
+        entropy_collapse={"warmup_steps": 2, "consecutive_steps": 5},
     )
 
     try:
