@@ -216,6 +216,12 @@ These are instructions specifically for AI agents working on rlwatch. They overr
 8. **When adding an alert channel:** new sender class in `alerts.py`, new config dataclass section, wire it into `AlertManager.__init__`, add env var overrides to `config.py::load_config`, write a mocked-transport integration test.
 9. **Prefer the dedicated tools** (Read/Edit/Write/Grep/Glob) over Bash for the tasks they cover.
 10. **If you're unsure whether a change is in scope, ask.** The user would rather answer a question than undo a surprise.
+11. **Verify before returning control.** Before declaring any task complete and giving control back to the user, launch a sub-agent to independently verify your work. The sub-agent should:
+    - Run the full test suite (`pytest -v`) and confirm all tests pass.
+    - Run coverage (`pytest --cov=rlwatch --cov-fail-under=90`) and confirm the gate holds.
+    - Grep for any obvious regressions (forbidden patterns, broken imports, untested new code paths).
+    - If any check fails, fix the issue before reporting success.
+    This is non-negotiable. The user should never receive a "done" message that is immediately followed by a CI failure. If you can't run the verification (e.g., missing dependencies), say so explicitly instead of assuming it passes.
 
 ---
 
