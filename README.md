@@ -197,7 +197,7 @@ Everything lives in a single SQLite file at `./rlwatch_logs/metrics.db`. Three t
 
 - **HuggingFace TRL** — pass `attach(trainer=trainer)` for direct callback registration. See the [end-to-end tutorial](https://varun1724.github.io/rlwatch/tutorials/trl-grpo-end-to-end/) for a real GPT-2 + GRPO example that runs on CPU in ~5 minutes.
 - **veRL** — auto-detected. Registers a custom tracking backend that forwards metrics to rlwatch. See [`docs/getting-started`](https://varun1724.github.io/rlwatch/getting-started/).
-- **OpenRLHF** — `framework="manual"` + `monitor.log_step()`. Deep integration on the roadmap.
+- **OpenRLHF** — auto-detected. Provides a logger-compatible class (`RLWatchOpenRLHFLogger`) that can be injected alongside W&B/TensorBoard loggers.
 - **Anything else** — same as above. Every metric in `log_step` is optional; pass whatever your framework exposes.
 
 ---

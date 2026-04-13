@@ -404,14 +404,32 @@ def _attach_verl(monitor: RLWatch):
 
 
 def _attach_openrlhf(monitor: RLWatch):
-    """Attach to OpenRLHF framework."""
-    try:
-        import openrlhf
+    """Attach to OpenRLHF via a logger-compatible class.
 
-        logger.info(
-            "rlwatch ready for OpenRLHF. Use monitor.log_step() in your training loop "
-            "or integrate with OpenRLHF's callback system."
-        )
+    OpenRLHF doesn't have a callback API. It uses direct logger classes
+    (WandbLogger, TensorboardLogger) called from the training loop. We
+    create an ``RLWatchOpenRLHFLogger`` that duck-types the logger
+    interface and intercepts ``log_train(global_step, logs_dict)``.
+
+    The logger is stashed on the monitor so the user can inject it into
+    their trainer manually if auto-injection doesn't apply.
+    """
+    try:
+        import openrlhf  # noqa: F401
     except ImportError:
         logger.warning("OpenRLHF not found. Falling back to manual mode.")
         monitor.config.framework = "manual"
+        return
+
+    from rlwatch.integrations.openrlhf_logger import RLWatchOpenRLHFLogger
+
+    openrlhf_logger = RLWatchOpenRLHFLogger(monitor)
+    monitor._openrlhf_logger = openrlhf_logger
+
+    logger.info(
+        "rlwatch OpenRLHF logger ready. Add it to your trainer:\n"
+        "  trainer.wandb_logger = monitor._openrlhf_logger\n"
+        "  # or alongside existing loggers — the logger interface is\n"
+        "  # compatible with OpenRLHF's WandbLogger/TensorboardLogger.\n"
+        "  Or use monitor.log_step() directly in your training loop."
+    )

@@ -59,9 +59,9 @@ Status: 🟢 Shipped in v0.2.0 (stage one) · Why: this is the single biggest ri
 
 ### 1.3 Framework integrations
 - [x] **veRL** deep integration — shipped in v0.4.0 via custom tracking backend (`RLWatchVerLTracker`)
-- [ ] **OpenRLHF** deep integration — same
+- [x] **OpenRLHF** deep integration — shipped in v0.5.1 via logger-compatible class (`RLWatchOpenRLHFLogger`)
 - [ ] **Ray RLlib** support (stretch — different audience but big ecosystem)
-- [ ] Auto-detection test matrix: import the framework, call `attach()`, assert the right integration path fires
+- [x] Auto-detection test matrix — shipped in v0.5.1, 10 tests covering detection + routing for all three frameworks + manual fallback
 
 ### 1.4 Alert channels
 - [ ] PagerDuty (critical alerts to on-call rotation) — *deferred to v0.4, enterprise channel needs real customer to design against*
@@ -77,7 +77,7 @@ Status: 🟢 Shipped in v0.2.0 (stage one) · Why: this is the single biggest ri
 ### 1.6 Docs & examples
 - [x] Full docs site (`mkdocs-material`) — shipped in v0.3.0 at https://varun1724.github.io/rlwatch/
 - [x] End-to-end tutorial: train **GPT-2** with TRL + GRPO on a synthetic dataset with rlwatch attached — shipped in v0.3.0. *Originally planned as Qwen-0.5B + GSM8K but switched to GPT-2 + synthetic for CPU feasibility — Qwen on CPU is unworkable and Colab-only is an adoption-killer.*
-- [ ] Playbook: "Your entropy is collapsing, here's what to try" — *partially covered by per-detector docs pages; full playbook deferred to v0.4*
+- [x] Playbook: "Your entropy is collapsing, here's what to try" — shipped in v0.5.1 at `docs/playbook.md`
 - [ ] Case studies / postmortems (even synthetic ones to start) — *deferred until we have real users*
 
 **Exit criteria for Phase 1:** 100+ GitHub stars, 500+ monthly PyPI downloads, at least 3 external users who have filed issues or PRs. Test suite > 90% coverage, all CI green on every PR.

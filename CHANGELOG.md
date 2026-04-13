@@ -6,6 +6,25 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-04-12
+
+### Added
+- **OpenRLHF deep integration** via `RLWatchOpenRLHFLogger` in
+  `src/rlwatch/integrations/openrlhf_logger.py`. Duck-types OpenRLHF's
+  logger interface (`log_train(global_step, logs_dict)`). Handles
+  `entropy_loss` sign-flip (OpenRLHF logs it as a negative loss term).
+  12 unit tests at 100% coverage.
+- **Auto-detection test matrix** — 10 tests covering `_detect_framework()`
+  for TRL, veRL, OpenRLHF, none → manual, priority ordering (TRL > veRL >
+  OpenRLHF), and `attach(framework="auto")` end-to-end routing.
+- **Troubleshooting playbook** at `docs/playbook.md` — practical "what to
+  do when rlwatch fires" guide covering all 7 detectors with fix priority
+  lists, common mistakes, and general principles.
+
+### Fixed
+- Tutorial dataset shrunk to 10 prompts / 3 epochs for CI timing
+  (was timing out at 600s on GitHub Actions CPU runners).
+
 ## [0.5.0] — 2026-04-12 — stage four: dashboard polish
 
 ### Added

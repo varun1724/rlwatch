@@ -75,6 +75,7 @@ nav:
       - Generic webhook: alerts/webhook.md
   - Tutorials:
       - TRL + GRPO end-to-end: tutorials/trl-grpo-end-to-end.md
+  - Playbook: playbook.md
   - FAQ: faq.md
   - Blog:
       - "v0.3.0 launch": blog/0.3.0-launch.md
